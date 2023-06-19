@@ -657,7 +657,7 @@ pub fn creation_time(creation_time: u64) -> u64 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize)]
 pub enum DataType {
     #[default]
     Binary = 0x000000,
