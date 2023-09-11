@@ -160,7 +160,7 @@ mod tests {
     fn test_moov() {
         let src_box = MoovBox {
             mvhd: MvhdBox::default(),
-            mvex: None, // XXX mvex is not written currently
+            mvex: Some(MvexBox::default()),
             traks: vec![],
             meta: Some(MetaBox::default()),
             udta: Some(UdtaBox::default()),
