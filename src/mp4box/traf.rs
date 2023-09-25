@@ -21,6 +21,10 @@ pub struct TrafBox {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub senc: Option<SencBox>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "uuid")]
+    pub uuids: Vec<UuidBox>,
 }
 
 impl TrafBox {
@@ -79,6 +83,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
         let mut saiz = None;
         let mut saio = None;
         let mut senc = None;
+        let mut uuids = Vec::new();
 
         let mut current = reader.stream_position()?;
         let end = start + size;
@@ -111,6 +116,10 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
                 BoxType::SencBox => {
                     senc = Some(SencBox::read_box(reader, s)?);
                 }
+                BoxType::UuidBox => {
+                    let uuid = UuidBox::read_box(reader, s)?;
+                    uuids.push(uuid);
+                }
                 _ => {
                     // XXX warn!()
                     skip_box(reader, s)?;
@@ -133,6 +142,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
             saiz,
             saio,
             senc,
+            uuids,
         })
     }
 }

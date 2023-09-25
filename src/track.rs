@@ -1,6 +1,6 @@
 use bytes::BytesMut;
 use std::cmp;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::time::Duration;
 
@@ -574,6 +574,8 @@ impl Mp4Track {
                 let traf = &self.trafs[traf_idx];
                 if let Some(tfdt) = &traf.tfdt {
                     base_start_time = tfdt.base_media_decode_time;
+                } else if let Some(decode_time) = find_smooth_decode_time(&traf.uuids) {
+                    base_start_time = decode_time;
                 }
                 if let Some(duration) = traf.tfhd.default_sample_duration {
                     default_sample_duration = duration;
@@ -982,4 +984,28 @@ impl Mp4TrackWriter {
 
         Ok(self.trak.clone())
     }
+}
+
+const SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER: [u8; 16] = [
+    0x6d, 0x1d, 0x9b, 0x05, 0x42, 0xd5, 0x44, 0xe6, 0x80, 0xe2, 0x14, 0x1d, 0xaf, 0xf7, 0x57, 0xb2,
+];
+
+fn find_smooth_decode_time(uuids: &[UuidBox]) -> Option<u64> {
+    for uuid in uuids {
+        if uuid.extended_type == SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER {
+            if uuid.data.len() < 12 {
+                return None;
+            }
+            let version = uuid.data[0];
+            let decode_time = if version == 1 {
+                let array = (&uuid.data[4..12]).try_into().ok()?;
+                u64::from_be_bytes(array)
+            } else {
+                let array = (&uuid.data[4..8]).try_into().ok()?;
+                u32::from_be_bytes(array) as u64
+            };
+            return Some(decode_time);
+        }
+    }
+    None
 }
