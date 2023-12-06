@@ -1,6 +1,7 @@
+use byteorder::{BigEndian, ReadBytesExt};
 use bytes::BytesMut;
 use std::cmp;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::time::Duration;
 
@@ -993,16 +994,12 @@ const SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER: [u8; 16] = [
 fn find_smooth_decode_time(uuids: &[UuidBox]) -> Option<u64> {
     for uuid in uuids {
         if uuid.extended_type == SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER {
-            if uuid.data.len() < 12 {
-                return None;
-            }
-            let version = uuid.data[0];
+            let mut reader = &uuid.data[..];
+            let (version, _flags) = read_box_header_ext(&mut reader).ok()?;
             let decode_time = if version == 1 {
-                let array = (&uuid.data[4..12]).try_into().ok()?;
-                u64::from_be_bytes(array)
+                reader.read_u64::<BigEndian>().ok()?
             } else {
-                let array = (&uuid.data[4..8]).try_into().ok()?;
-                u32::from_be_bytes(array) as u64
+                reader.read_u32::<BigEndian>().ok()? as u64
             };
             return Some(decode_time);
         }
