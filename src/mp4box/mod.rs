@@ -52,6 +52,7 @@
 //!     mvex
 //!         mehd
 //!         trex
+//!     pssh
 //! emsg
 //! uuid
 //! moof
@@ -99,6 +100,7 @@ pub(crate) mod moov;
 pub(crate) mod mp4a;
 pub(crate) mod mvex;
 pub(crate) mod mvhd;
+pub(crate) mod pssh;
 pub(crate) mod saio;
 pub(crate) mod saiz;
 pub(crate) mod schi;
@@ -154,6 +156,7 @@ pub use moov::MoovBox;
 pub use mp4a::Mp4aBox;
 pub use mvex::MvexBox;
 pub use mvhd::MvhdBox;
+pub use pssh::PsshBox;
 pub use saio::SaioBox;
 pub use saiz::SaizBox;
 pub use schi::SchiBox;
@@ -282,6 +285,7 @@ boxtype! {
     SaizBox => 0x7361697a,
     SaioBox => 0x7361696f,
     SencBox => 0x73656e63,
+    PsshBox => 0x70737368,
     UuidBox => 0x75756964
 }
 

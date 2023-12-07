@@ -20,6 +20,9 @@ pub struct MoovBox {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub udta: Option<UdtaBox>,
+
+    #[serde(rename = "pssh")]
+    pub psshs: Vec<PsshBox>,
 }
 
 impl MoovBox {
@@ -40,6 +43,9 @@ impl MoovBox {
         }
         if let Some(udta) = &self.udta {
             size += udta.box_size();
+        }
+        for pssh in &self.psshs {
+            size += pssh.box_size();
         }
         size
     }
@@ -73,6 +79,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for MoovBox {
         let mut udta = None;
         let mut mvex = None;
         let mut traks = Vec::new();
+        let mut psshs = Vec::new();
 
         let mut current = reader.stream_position()?;
         let end = start + size;
@@ -103,6 +110,10 @@ impl<R: Read + Seek> ReadBox<&mut R> for MoovBox {
                 BoxType::UdtaBox => {
                     udta = Some(UdtaBox::read_box(reader, s)?);
                 }
+                BoxType::PsshBox => {
+                    let pssh = PsshBox::read_box(reader, s)?;
+                    psshs.push(pssh);
+                }
                 _ => {
                     // XXX warn!()
                     skip_box(reader, s)?;
@@ -124,6 +135,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for MoovBox {
             udta,
             mvex,
             traks,
+            psshs,
         })
     }
 }
@@ -146,6 +158,9 @@ impl<W: Write> WriteBox<&mut W> for MoovBox {
         if let Some(udta) = &self.udta {
             udta.write_box(writer)?;
         }
+        for pssh in &self.psshs {
+            pssh.write_box(writer)?;
+        }
         Ok(0)
     }
 }
@@ -164,6 +179,7 @@ mod tests {
             traks: vec![],
             meta: Some(MetaBox::default()),
             udta: Some(UdtaBox::default()),
+            psshs: vec![],
         };
 
         let mut buf = Vec::new();
