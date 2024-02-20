@@ -217,7 +217,7 @@ impl Mp4Track {
                 mp4a_opt = Some(mp4a);
             }
         }
-        if let Some(ref mp4a) = mp4a_opt {
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 SampleFreqIndex::try_from(esds.es_desc.dec_config.dec_specific.freq_index)
             } else {
@@ -237,7 +237,7 @@ impl Mp4Track {
                 mp4a_opt = Some(mp4a);
             }
         }
-        if let Some(ref mp4a) = mp4a_opt {
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 ChannelConfig::try_from(esds.es_desc.dec_config.dec_specific.chan_conf)
             } else {
@@ -271,7 +271,7 @@ impl Mp4Track {
                 mp4a_opt = Some(mp4a);
             }
         }
-        if let Some(ref mp4a) = mp4a_opt {
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 esds.es_desc.dec_config.avg_bitrate
             } else {
@@ -314,7 +314,7 @@ impl Mp4Track {
                 avc1_opt = Some(avc1);
             }
         }
-        if let Some(ref avc1) = avc1_opt {
+        if let Some(avc1) = avc1_opt {
             AvcProfile::try_from((
                 avc1.avcc.avc_profile_indication,
                 avc1.avcc.profile_compatibility,
@@ -333,8 +333,8 @@ impl Mp4Track {
                 avc1_opt = Some(avc1);
             }
         }
-        if let Some(ref avc1) = avc1_opt {
-            match avc1.avcc.sequence_parameter_sets.get(0) {
+        if let Some(avc1) = avc1_opt {
+            match avc1.avcc.sequence_parameter_sets.first() {
                 Some(nal) => Ok(nal.bytes.as_ref()),
                 None => Err(Error::EntryInStblNotFound(
                     self.track_id(),
@@ -356,8 +356,8 @@ impl Mp4Track {
                 avc1_opt = Some(avc1);
             }
         }
-        if let Some(ref avc1) = avc1_opt {
-            match avc1.avcc.picture_parameter_sets.get(0) {
+        if let Some(avc1) = avc1_opt {
+            match avc1.avcc.picture_parameter_sets.first() {
                 Some(nal) => Ok(nal.bytes.as_ref()),
                 None => Err(Error::EntryInStblNotFound(
                     self.track_id(),
@@ -379,7 +379,7 @@ impl Mp4Track {
                 mp4a_opt = Some(mp4a);
             }
         }
-        if let Some(ref mp4a) = mp4a_opt {
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 AudioObjectType::try_from(esds.es_desc.dec_config.dec_specific.profile)
             } else {
