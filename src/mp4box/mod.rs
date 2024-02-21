@@ -259,6 +259,7 @@ boxtype! {
     UrlBox  => 0x75726C20,
     SmhdBox => 0x736d6864,
     Avc1Box => 0x61766331,
+    Avc3Box => 0x61766333,
     AvcCBox => 0x61766343,
     Hev1Box => 0x68657631,
     HvcCBox => 0x68766343,
