@@ -148,6 +148,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
         let mut moofs = Vec::new();
         let mut moof_offsets = Vec::new();
+        let mut uuids = Vec::new();
 
         let mut current = start;
         while current < size {
@@ -175,6 +176,10 @@ impl<R: Read + Seek> Mp4Reader<R> {
                     let moof = MoofBox::read_box(&mut reader, s)?;
                     moofs.push(moof);
                     moof_offsets.push(moof_offset);
+                }
+                BoxType::UuidBox => {
+                    let uuid = UuidBox::read_box(&mut reader, s)?;
+                    uuids.push(uuid);
                 }
                 _ => {
                     // XXX warn!()
@@ -219,8 +224,8 @@ impl<R: Read + Seek> Mp4Reader<R> {
             ftyp: self.ftyp.clone(),
             moov: self.moov.clone(),
             moofs,
-            emsgs: self.emsgs.clone(),
-            uuids: self.uuids.clone(),
+            emsgs: Vec::new(),
+            uuids,
             tracks,
             size,
         })
