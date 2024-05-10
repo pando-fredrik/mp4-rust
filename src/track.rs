@@ -30,6 +30,7 @@ impl From<MediaConfig> for TrackConfig {
             MediaConfig::AacConfig(aac_conf) => Self::from(aac_conf),
             MediaConfig::TtxtConfig(ttxt_conf) => Self::from(ttxt_conf),
             MediaConfig::Vp9Config(vp9_config) => Self::from(vp9_config),
+            MediaConfig::WvttConfig(wvtt_conf) => Self::from(wvtt_conf),
         }
     }
 }
@@ -89,6 +90,17 @@ impl From<Vp9Config> for TrackConfig {
     }
 }
 
+impl From<WvttConfig> for TrackConfig {
+    fn from(wvtt_conf: WvttConfig) -> Self {
+        Self {
+            track_type: TrackType::Text,
+            timescale: 1000,               // XXX
+            language: String::from("und"), // XXX
+            media_conf: MediaConfig::WvttConfig(wvtt_conf),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Mp4Track {
     pub trak: TrakBox,
@@ -129,6 +141,8 @@ impl Mp4Track {
             Ok(MediaType::AAC)
         } else if self.trak.mdia.minf.stbl.stsd.tx3g.is_some() {
             Ok(MediaType::TTXT)
+        } else if self.trak.mdia.minf.stbl.stsd.wvtt.is_some() {
+            Ok(MediaType::WVTT)
         } else {
             Err(Error::InvalidData("unsupported media type"))
         }
@@ -145,6 +159,8 @@ impl Mp4Track {
             Ok(FourCC::from(BoxType::Mp4aBox))
         } else if self.trak.mdia.minf.stbl.stsd.tx3g.is_some() {
             Ok(FourCC::from(BoxType::Tx3gBox))
+        } else if self.trak.mdia.minf.stbl.stsd.wvtt.is_some() {
+            Ok(FourCC::from(BoxType::WvttBox))
         } else {
             Err(Error::InvalidData("unsupported sample entry box"))
         }
@@ -685,6 +701,10 @@ impl Mp4TrackWriter {
             MediaConfig::TtxtConfig(ref _ttxt_config) => {
                 let tx3g = Tx3gBox::default();
                 trak.mdia.minf.stbl.stsd.tx3g = Some(tx3g);
+            }
+            MediaConfig::WvttConfig(ref _wvtt_config) => {
+                let wvtt = WvttBox::default();
+                trak.mdia.minf.stbl.stsd.wvtt = Some(wvtt);
             }
         }
         Ok(Mp4TrackWriter {
