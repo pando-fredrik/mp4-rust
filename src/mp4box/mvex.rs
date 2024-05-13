@@ -7,26 +7,16 @@ use crate::mp4box::{mehd::MehdBox, trex::TrexBox};
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct MvexBox {
     pub mehd: Option<MehdBox>,
-
-    #[serde(rename = "trex")]
-    pub trexs: Vec<TrexBox>,
+    pub trex: TrexBox,
 }
 
 impl MvexBox {
     pub fn get_type(&self) -> BoxType {
-        BoxType::MvexBox
+        BoxType::MdiaBox
     }
 
     pub fn get_size(&self) -> u64 {
-        let mut size = HEADER_SIZE;
-
-        size += self.mehd.as_ref().map_or(0, |x| x.box_size());
-
-        for trex in self.trexs.iter() {
-            size += trex.box_size();
-        }
-
-        size
+        HEADER_SIZE + self.mehd.as_ref().map(|x| x.box_size()).unwrap_or(0) + self.trex.box_size()
     }
 }
 
@@ -54,7 +44,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for MvexBox {
         let start = box_start(reader)?;
 
         let mut mehd = None;
-        let mut trexs = Vec::new();
+        let mut trex = None;
 
         let mut current = reader.stream_position()?;
         let end = start + size;
@@ -73,7 +63,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for MvexBox {
                     mehd = Some(MehdBox::read_box(reader, s)?);
                 }
                 BoxType::TrexBox => {
-                    trexs.push(TrexBox::read_box(reader, s)?);
+                    trex = Some(TrexBox::read_box(reader, s)?);
                 }
                 _ => {
                     // XXX warn!()
@@ -84,13 +74,16 @@ impl<R: Read + Seek> ReadBox<&mut R> for MvexBox {
             current = reader.stream_position()?;
         }
 
-        if trexs.is_empty() {
+        if trex.is_none() {
             return Err(Error::BoxNotFound(BoxType::TrexBox));
         }
 
         skip_bytes_to(reader, start + size)?;
 
-        Ok(MvexBox { mehd, trexs })
+        Ok(MvexBox {
+            mehd,
+            trex: trex.unwrap(),
+        })
     }
 }
 
@@ -102,10 +95,7 @@ impl<W: Write> WriteBox<&mut W> for MvexBox {
         if let Some(mehd) = &self.mehd {
             mehd.write_box(writer)?;
         }
-
-        for trex in self.trexs.iter() {
-            trex.write_box(writer)?;
-        }
+        self.trex.write_box(writer)?;
 
         Ok(size)
     }

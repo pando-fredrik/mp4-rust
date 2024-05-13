@@ -56,9 +56,7 @@ fn get_boxes(file: File) -> Result<Vec<Box>> {
         if let Some(mehd) = &mvex.mehd {
             boxes.push(build_box(mehd));
         }
-        for trex in mvex.trexs.iter() {
-            boxes.push(build_box(trex));
-        }
+        boxes.push(build_box(&mvex.trex));
     }
 
     // trak.
