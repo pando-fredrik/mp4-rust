@@ -52,6 +52,7 @@ fn info<P: AsRef<Path>>(filename: &P) -> Result<()> {
             TrackType::Video => video_info(track),
             TrackType::Audio => audio_info(track),
             TrackType::Subtitle => subtitle_info(track),
+            TrackType::Text => text_info(track),
         };
 
         println!(
@@ -130,6 +131,14 @@ fn subtitle_info(track: &Mp4Track) -> Result<String> {
         Ok(format!("{} ({:?})", track.media_type()?, track.box_type()?,))
     } else {
         Err(Error::InvalidData("tx3g box not found"))
+    }
+}
+
+fn text_info(track: &Mp4Track) -> Result<String> {
+    if track.trak.mdia.minf.stbl.stsd.wvtt.is_some() {
+        Ok(format!("{} ({:?})", track.media_type()?, track.box_type()?,))
+    } else {
+        Err(Error::InvalidData("wvtt box not found"))
     }
 }
 

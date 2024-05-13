@@ -6,7 +6,7 @@ use std::path::Path;
 
 use mp4::{
     AacConfig, AvcConfig, HevcConfig, MediaConfig, MediaType, Mp4Config, Result, TrackConfig,
-    TtxtConfig, Vp9Config,
+    TtxtConfig, Vp9Config, WvttConfig,
 };
 
 fn main() {
@@ -65,6 +65,7 @@ fn copy<P: AsRef<Path>>(src_filename: &P, dst_filename: &P) -> Result<()> {
                 chan_conf: track.channel_config()?,
             }),
             MediaType::TTXT => MediaConfig::TtxtConfig(TtxtConfig {}),
+            MediaType::WVTT => MediaConfig::WvttConfig(WvttConfig {}),
         };
 
         let track_conf = TrackConfig {

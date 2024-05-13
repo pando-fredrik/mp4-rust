@@ -29,6 +29,7 @@
 //!                         hev1
 //!                         mp4a
 //!                         tx3g
+//!                         wvtt
 //!                         enca
 //!                         encv
 //!                             sinf
@@ -76,6 +77,7 @@ use crate::*;
 
 pub(crate) mod avc1;
 pub(crate) mod co64;
+pub(crate) mod ctim;
 pub(crate) mod ctts;
 pub(crate) mod data;
 pub(crate) mod dinf;
@@ -88,6 +90,7 @@ pub(crate) mod frma;
 pub(crate) mod ftyp;
 pub(crate) mod hdlr;
 pub(crate) mod hev1;
+pub(crate) mod iden;
 pub(crate) mod ilst;
 pub(crate) mod mdhd;
 pub(crate) mod mdia;
@@ -100,6 +103,7 @@ pub(crate) mod moov;
 pub(crate) mod mp4a;
 pub(crate) mod mvex;
 pub(crate) mod mvhd;
+pub(crate) mod payl;
 pub(crate) mod pssh;
 pub(crate) mod saio;
 pub(crate) mod saiz;
@@ -114,6 +118,7 @@ pub(crate) mod stsc;
 pub(crate) mod stsd;
 pub(crate) mod stss;
 pub(crate) mod stsz;
+pub(crate) mod sttg;
 pub(crate) mod stts;
 pub(crate) mod tenc;
 pub(crate) mod tfdt;
@@ -126,12 +131,20 @@ pub(crate) mod trun;
 pub(crate) mod tx3g;
 pub(crate) mod udta;
 pub(crate) mod uuid;
+pub(crate) mod vlab;
 pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
+pub(crate) mod vsid;
+pub(crate) mod vtt_c;
+pub(crate) mod vtta;
+pub(crate) mod vttc;
+pub(crate) mod vtte;
+pub(crate) mod wvtt;
 
 pub use avc1::Avc1Box;
 pub use co64::Co64Box;
+pub use ctim::CtimBox;
 pub use ctts::CttsBox;
 pub use data::DataBox;
 pub use dinf::DinfBox;
@@ -144,6 +157,7 @@ pub use frma::FrmaBox;
 pub use ftyp::FtypBox;
 pub use hdlr::HdlrBox;
 pub use hev1::Hev1Box;
+pub use iden::IdenBox;
 pub use ilst::IlstBox;
 pub use mdhd::MdhdBox;
 pub use mdia::MdiaBox;
@@ -156,6 +170,7 @@ pub use moov::MoovBox;
 pub use mp4a::Mp4aBox;
 pub use mvex::MvexBox;
 pub use mvhd::MvhdBox;
+pub use payl::PaylBox;
 pub use pssh::PsshBox;
 pub use saio::SaioBox;
 pub use saiz::SaizBox;
@@ -170,6 +185,7 @@ pub use stsc::StscBox;
 pub use stsd::StsdBox;
 pub use stss::StssBox;
 pub use stsz::StszBox;
+pub use sttg::SttgBox;
 pub use stts::SttsBox;
 pub use tenc::TencBox;
 pub use tfdt::TfdtBox;
@@ -182,9 +198,16 @@ pub use trun::TrunBox;
 pub use tx3g::Tx3gBox;
 pub use udta::UdtaBox;
 pub use uuid::UuidBox;
+pub use vlab::VlabBox;
 pub use vmhd::VmhdBox;
 pub use vp09::Vp09Box;
 pub use vpcc::VpccBox;
+pub use vsid::VsidBox;
+pub use vtt_c::VttCBox;
+pub use vtta::VttaBox;
+pub use vttc::VttcBox;
+pub use vtte::VtteBox;
+pub use wvtt::WvttBox;
 
 pub const HEADER_SIZE: u64 = 8;
 // const HEADER_LARGE_SIZE: u64 = 16;
@@ -287,7 +310,18 @@ boxtype! {
     SaioBox => 0x7361696f,
     SencBox => 0x73656e63,
     PsshBox => 0x70737368,
-    UuidBox => 0x75756964
+    UuidBox => 0x75756964,
+    WvttBox => 0x77767474,
+    VttCBox => 0x76747443,
+    VlabBox => 0x766c6162,
+    VttcBox => 0x76747463,
+    VsidBox => 0x76736964,
+    CtimBox => 0x6374696d,
+    IdenBox => 0x6964656e,
+    SttgBox => 0x73747467,
+    PaylBox => 0x7061796c,
+    VtteBox => 0x76747465,
+    VttaBox => 0x76747461
 }
 
 pub trait Mp4Box: Sized {
