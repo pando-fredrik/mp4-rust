@@ -47,6 +47,9 @@ impl MoovBox {
         for pssh in &self.psshs {
             size += pssh.box_size();
         }
+        if let Some(mvex) = &self.mvex {
+            size += mvex.box_size();
+        }
         size
     }
 }
@@ -148,6 +151,9 @@ impl<W: Write> WriteBox<&mut W> for MoovBox {
         self.mvhd.write_box(writer)?;
         for trak in self.traks.iter() {
             trak.write_box(writer)?;
+        }
+        if let Some(mvex) = &self.mvex {
+            mvex.write_box(writer)?;
         }
         if let Some(meta) = &self.meta {
             meta.write_box(writer)?;
