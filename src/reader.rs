@@ -121,6 +121,15 @@ impl<R: Read + Seek> Mp4Reader<R> {
                         })
                         .unwrap_or(0);
 
+                    let default_sample_size = mvex
+                        .and_then(|mvex| {
+                            mvex.trexs
+                                .iter()
+                                .find(|trex| trex.track_id == track_id)
+                                .map(|trex| trex.default_sample_size)
+                        })
+                        .unwrap_or(0);
+
                     if let Some(track) = tracks.get_mut(&track_id) {
                         track.default_sample_duration = default_sample_duration;
                         track.default_sample_size = default_sample_size;
@@ -212,15 +221,18 @@ impl<R: Read + Seek> Mp4Reader<R> {
             .map(|trak| (trak.tkhd.track_id, Mp4Track::from(trak)))
             .collect();
 
-        let mut default_sample_duration = 0;
-        if let Some(ref mvex) = &self.moov.mvex {
-            default_sample_duration = mvex.trex.default_sample_duration
-        }
-
         for (moof, moof_offset) in moofs.iter().zip(moof_offsets) {
             for traf in moof.trafs.iter() {
                 let track_id = traf.tfhd.track_id;
                 if let Some(track) = tracks.get_mut(&track_id) {
+                    let default_sample_duration = if let Some(ref mvex) = &self.moov.mvex {
+                        mvex.trexs.iter()
+                                    .find(|trex| trex.track_id == track_id)
+                                    .map(|trex| trex.default_sample_duration).unwrap_or(0)
+                    } else {
+                        0
+                    };
+
                     track.default_sample_duration = default_sample_duration;
                     track.moof_offsets.push(moof_offset);
                     track.trafs.push(traf.clone())
