@@ -29,6 +29,14 @@
 //!                         hev1
 //!                         mp4a
 //!                         tx3g
+//!                         wvtt
+//!                         enca
+//!                         encv
+//!                             sinf
+//!                                 frma
+//!                                 schm
+//!                                 schi
+//!                                     tenc
 //!                     stts
 //!                     stsc
 //!                     stsz
@@ -45,13 +53,18 @@
 //!     mvex
 //!         mehd
 //!         trex
+//!     pssh
 //! emsg
+//! uuid
 //! moof
 //!     mfhd
 //!     traf
 //!         tfhd
 //!         tfdt
 //!         trun
+//!         saiz
+//!         saio
+//!         senc
 //! mdat
 //! free
 //!
@@ -64,15 +77,20 @@ use crate::*;
 
 pub(crate) mod avc1;
 pub(crate) mod co64;
+pub(crate) mod ctim;
 pub(crate) mod ctts;
 pub(crate) mod data;
 pub(crate) mod dinf;
 pub(crate) mod edts;
 pub(crate) mod elst;
 pub(crate) mod emsg;
+pub(crate) mod enca;
+pub(crate) mod encv;
+pub(crate) mod frma;
 pub(crate) mod ftyp;
 pub(crate) mod hdlr;
 pub(crate) mod hev1;
+pub(crate) mod iden;
 pub(crate) mod ilst;
 pub(crate) mod mdhd;
 pub(crate) mod mdia;
@@ -85,6 +103,14 @@ pub(crate) mod moov;
 pub(crate) mod mp4a;
 pub(crate) mod mvex;
 pub(crate) mod mvhd;
+pub(crate) mod payl;
+pub(crate) mod pssh;
+pub(crate) mod saio;
+pub(crate) mod saiz;
+pub(crate) mod schi;
+pub(crate) mod schm;
+pub(crate) mod senc;
+pub(crate) mod sinf;
 pub(crate) mod smhd;
 pub(crate) mod stbl;
 pub(crate) mod stco;
@@ -92,7 +118,9 @@ pub(crate) mod stsc;
 pub(crate) mod stsd;
 pub(crate) mod stss;
 pub(crate) mod stsz;
+pub(crate) mod sttg;
 pub(crate) mod stts;
+pub(crate) mod tenc;
 pub(crate) mod tfdt;
 pub(crate) mod tfhd;
 pub(crate) mod tkhd;
@@ -102,21 +130,34 @@ pub(crate) mod trex;
 pub(crate) mod trun;
 pub(crate) mod tx3g;
 pub(crate) mod udta;
+pub(crate) mod uuid;
+pub(crate) mod vlab;
 pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
+pub(crate) mod vsid;
+pub(crate) mod vtt_c;
+pub(crate) mod vtta;
+pub(crate) mod vttc;
+pub(crate) mod vtte;
+pub(crate) mod wvtt;
 
 pub use avc1::Avc1Box;
 pub use co64::Co64Box;
+pub use ctim::CtimBox;
 pub use ctts::CttsBox;
 pub use data::DataBox;
 pub use dinf::DinfBox;
 pub use edts::EdtsBox;
 pub use elst::ElstBox;
 pub use emsg::EmsgBox;
+pub use enca::EncaBox;
+pub use encv::EncvBox;
+pub use frma::FrmaBox;
 pub use ftyp::FtypBox;
 pub use hdlr::HdlrBox;
 pub use hev1::Hev1Box;
+pub use iden::IdenBox;
 pub use ilst::IlstBox;
 pub use mdhd::MdhdBox;
 pub use mdia::MdiaBox;
@@ -129,6 +170,14 @@ pub use moov::MoovBox;
 pub use mp4a::Mp4aBox;
 pub use mvex::MvexBox;
 pub use mvhd::MvhdBox;
+pub use payl::PaylBox;
+pub use pssh::PsshBox;
+pub use saio::SaioBox;
+pub use saiz::SaizBox;
+pub use schi::SchiBox;
+pub use schm::SchmBox;
+pub use senc::SencBox;
+pub use sinf::SinfBox;
 pub use smhd::SmhdBox;
 pub use stbl::StblBox;
 pub use stco::StcoBox;
@@ -136,7 +185,9 @@ pub use stsc::StscBox;
 pub use stsd::StsdBox;
 pub use stss::StssBox;
 pub use stsz::StszBox;
+pub use sttg::SttgBox;
 pub use stts::SttsBox;
+pub use tenc::TencBox;
 pub use tfdt::TfdtBox;
 pub use tfhd::TfhdBox;
 pub use tkhd::TkhdBox;
@@ -146,9 +197,17 @@ pub use trex::TrexBox;
 pub use trun::TrunBox;
 pub use tx3g::Tx3gBox;
 pub use udta::UdtaBox;
+pub use uuid::UuidBox;
+pub use vlab::VlabBox;
 pub use vmhd::VmhdBox;
 pub use vp09::Vp09Box;
 pub use vpcc::VpccBox;
+pub use vsid::VsidBox;
+pub use vtt_c::VttCBox;
+pub use vtta::VttaBox;
+pub use vttc::VttcBox;
+pub use vtte::VtteBox;
+pub use wvtt::WvttBox;
 
 pub const HEADER_SIZE: u64 = 8;
 // const HEADER_LARGE_SIZE: u64 = 16;
@@ -223,6 +282,7 @@ boxtype! {
     UrlBox  => 0x75726C20,
     SmhdBox => 0x736d6864,
     Avc1Box => 0x61766331,
+    Avc3Box => 0x61766333,
     AvcCBox => 0x61766343,
     Hev1Box => 0x68657631,
     HvcCBox => 0x68766343,
@@ -238,7 +298,30 @@ boxtype! {
     CovrBox => 0x636f7672,
     DescBox => 0x64657363,
     WideBox => 0x77696465,
-    WaveBox => 0x77617665
+    WaveBox => 0x77617665,
+    EncaBox => 0x656e6361,
+    EncvBox => 0x656e6376,
+    SinfBox => 0x73696e66,
+    FrmaBox => 0x66726d61,
+    SchmBox => 0x7363686d,
+    SchiBox => 0x73636869,
+    TencBox => 0x74656e63,
+    SaizBox => 0x7361697a,
+    SaioBox => 0x7361696f,
+    SencBox => 0x73656e63,
+    PsshBox => 0x70737368,
+    UuidBox => 0x75756964,
+    WvttBox => 0x77767474,
+    VttCBox => 0x76747443,
+    VlabBox => 0x766c6162,
+    VttcBox => 0x76747463,
+    VsidBox => 0x76736964,
+    CtimBox => 0x6374696d,
+    IdenBox => 0x6964656e,
+    SttgBox => 0x73747467,
+    PaylBox => 0x7061796c,
+    VtteBox => 0x76747465,
+    VttaBox => 0x76747461
 }
 
 pub trait Mp4Box: Sized {

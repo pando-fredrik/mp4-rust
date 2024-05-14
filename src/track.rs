@@ -1,3 +1,4 @@
+use byteorder::{BigEndian, ReadBytesExt};
 use bytes::BytesMut;
 use std::cmp;
 use std::convert::TryFrom;
@@ -30,6 +31,7 @@ impl From<MediaConfig> for TrackConfig {
             MediaConfig::AacConfig(aac_conf) => Self::from(aac_conf),
             MediaConfig::TtxtConfig(ttxt_conf) => Self::from(ttxt_conf),
             MediaConfig::Vp9Config(vp9_config) => Self::from(vp9_config),
+            MediaConfig::WvttConfig(wvtt_conf) => Self::from(wvtt_conf),
         }
     }
 }
@@ -89,6 +91,17 @@ impl From<Vp9Config> for TrackConfig {
     }
 }
 
+impl From<WvttConfig> for TrackConfig {
+    fn from(wvtt_conf: WvttConfig) -> Self {
+        Self {
+            track_type: TrackType::Text,
+            timescale: 1000,               // XXX
+            language: String::from("und"), // XXX
+            media_conf: MediaConfig::WvttConfig(wvtt_conf),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Mp4Track {
     pub trak: TrakBox,
@@ -97,6 +110,7 @@ pub struct Mp4Track {
 
     // Fragmented Tracks Defaults.
     pub default_sample_duration: u32,
+    pub default_sample_size: u32,
 }
 
 impl Mp4Track {
@@ -107,6 +121,7 @@ impl Mp4Track {
             trafs: Vec::new(),
             moof_offsets: Vec::new(),
             default_sample_duration: 0,
+            default_sample_size: 0,
         }
     }
 
@@ -129,6 +144,24 @@ impl Mp4Track {
             Ok(MediaType::AAC)
         } else if self.trak.mdia.minf.stbl.stsd.tx3g.is_some() {
             Ok(MediaType::TTXT)
+        } else if self.trak.mdia.minf.stbl.stsd.wvtt.is_some() {
+            Ok(MediaType::WVTT)
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if enca.mp4a.is_some() {
+                Ok(MediaType::AAC)
+            } else {
+                Err(Error::InvalidData("unsupported media type"))
+            }
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            if encv.avc1.is_some() {
+                Ok(MediaType::H264)
+            } else if encv.hev1.is_some() {
+                Ok(MediaType::H265)
+            } else if encv.vp09.is_some() {
+                Ok(MediaType::VP9)
+            } else {
+                Err(Error::InvalidData("unsupported media type"))
+            }
         } else {
             Err(Error::InvalidData("unsupported media type"))
         }
@@ -145,6 +178,24 @@ impl Mp4Track {
             Ok(FourCC::from(BoxType::Mp4aBox))
         } else if self.trak.mdia.minf.stbl.stsd.tx3g.is_some() {
             Ok(FourCC::from(BoxType::Tx3gBox))
+        } else if self.trak.mdia.minf.stbl.stsd.wvtt.is_some() {
+            Ok(FourCC::from(BoxType::WvttBox))
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if enca.mp4a.is_some() {
+                Ok(FourCC::from(BoxType::Mp4aBox))
+            } else {
+                Err(Error::InvalidData("unsupported sample entry box"))
+            }
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            if encv.avc1.is_some() {
+                Ok(FourCC::from(BoxType::Avc1Box))
+            } else if encv.hev1.is_some() {
+                Ok(FourCC::from(BoxType::Hev1Box))
+            } else if encv.vp09.is_some() {
+                Ok(FourCC::from(BoxType::Vp09Box))
+            } else {
+                Err(Error::InvalidData("unsupported sample entry box"))
+            }
         } else {
             Err(Error::InvalidData("unsupported sample entry box"))
         }
@@ -176,7 +227,15 @@ impl Mp4Track {
     }
 
     pub fn sample_freq_index(&self) -> Result<SampleFreqIndex> {
+        let mut mp4a_opt: Option<&Mp4aBox> = None;
         if let Some(ref mp4a) = self.trak.mdia.minf.stbl.stsd.mp4a {
+            mp4a_opt = Some(mp4a);
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if let Some(ref mp4a) = enca.mp4a {
+                mp4a_opt = Some(mp4a);
+            }
+        }
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 SampleFreqIndex::try_from(esds.es_desc.dec_config.dec_specific.freq_index)
             } else {
@@ -188,7 +247,15 @@ impl Mp4Track {
     }
 
     pub fn channel_config(&self) -> Result<ChannelConfig> {
+        let mut mp4a_opt: Option<&Mp4aBox> = None;
         if let Some(ref mp4a) = self.trak.mdia.minf.stbl.stsd.mp4a {
+            mp4a_opt = Some(mp4a);
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if let Some(ref mp4a) = enca.mp4a {
+                mp4a_opt = Some(mp4a);
+            }
+        }
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 ChannelConfig::try_from(esds.es_desc.dec_config.dec_specific.chan_conf)
             } else {
@@ -214,7 +281,15 @@ impl Mp4Track {
     }
 
     pub fn bitrate(&self) -> u32 {
+        let mut mp4a_opt: Option<&Mp4aBox> = None;
         if let Some(ref mp4a) = self.trak.mdia.minf.stbl.stsd.mp4a {
+            mp4a_opt = Some(mp4a);
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if let Some(ref mp4a) = enca.mp4a {
+                mp4a_opt = Some(mp4a);
+            }
+        }
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 esds.es_desc.dec_config.avg_bitrate
             } else {
@@ -249,7 +324,15 @@ impl Mp4Track {
     }
 
     pub fn video_profile(&self) -> Result<AvcProfile> {
+        let mut avc1_opt: Option<&Avc1Box> = None;
         if let Some(ref avc1) = self.trak.mdia.minf.stbl.stsd.avc1 {
+            avc1_opt = Some(avc1);
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            if let Some(ref avc1) = encv.avc1 {
+                avc1_opt = Some(avc1);
+            }
+        }
+        if let Some(avc1) = avc1_opt {
             AvcProfile::try_from((
                 avc1.avcc.avc_profile_indication,
                 avc1.avcc.profile_compatibility,
@@ -260,8 +343,16 @@ impl Mp4Track {
     }
 
     pub fn sequence_parameter_set(&self) -> Result<&[u8]> {
+        let mut avc1_opt: Option<&Avc1Box> = None;
         if let Some(ref avc1) = self.trak.mdia.minf.stbl.stsd.avc1 {
-            match avc1.avcc.sequence_parameter_sets.get(0) {
+            avc1_opt = Some(avc1);
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            if let Some(ref avc1) = encv.avc1 {
+                avc1_opt = Some(avc1);
+            }
+        }
+        if let Some(avc1) = avc1_opt {
+            match avc1.avcc.sequence_parameter_sets.first() {
                 Some(nal) => Ok(nal.bytes.as_ref()),
                 None => Err(Error::EntryInStblNotFound(
                     self.track_id(),
@@ -275,8 +366,16 @@ impl Mp4Track {
     }
 
     pub fn picture_parameter_set(&self) -> Result<&[u8]> {
+        let mut avc1_opt: Option<&Avc1Box> = None;
         if let Some(ref avc1) = self.trak.mdia.minf.stbl.stsd.avc1 {
-            match avc1.avcc.picture_parameter_sets.get(0) {
+            avc1_opt = Some(avc1);
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            if let Some(ref avc1) = encv.avc1 {
+                avc1_opt = Some(avc1);
+            }
+        }
+        if let Some(avc1) = avc1_opt {
+            match avc1.avcc.picture_parameter_sets.first() {
                 Some(nal) => Ok(nal.bytes.as_ref()),
                 None => Err(Error::EntryInStblNotFound(
                     self.track_id(),
@@ -290,7 +389,15 @@ impl Mp4Track {
     }
 
     pub fn audio_profile(&self) -> Result<AudioObjectType> {
+        let mut mp4a_opt: Option<&Mp4aBox> = None;
         if let Some(ref mp4a) = self.trak.mdia.minf.stbl.stsd.mp4a {
+            mp4a_opt = Some(mp4a);
+        } else if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            if let Some(ref mp4a) = enca.mp4a {
+                mp4a_opt = Some(mp4a);
+            }
+        }
+        if let Some(mp4a) = mp4a_opt {
             if let Some(ref esds) = mp4a.esds {
                 AudioObjectType::try_from(esds.es_desc.dec_config.dec_specific.profile)
             } else {
@@ -299,6 +406,41 @@ impl Mp4Track {
         } else {
             Err(Error::BoxInStblNotFound(self.track_id(), BoxType::Mp4aBox))
         }
+    }
+
+    pub fn protection_scheme_info(&self) -> Option<&SinfBox> {
+        if let Some(ref enca) = self.trak.mdia.minf.stbl.stsd.enca {
+            Some(&enca.sinf)
+        } else if let Some(ref encv) = self.trak.mdia.minf.stbl.stsd.encv {
+            Some(&encv.sinf)
+        } else {
+            None
+        }
+    }
+
+    pub fn protection_sample_info(&self) -> Result<Vec<SampleInfo>> {
+        let mut sample_infos = Vec::new();
+        let sinf = self
+            .protection_scheme_info()
+            .ok_or(Error::InvalidData("missing protection info"))?;
+        let iv_size = sinf
+            .schi
+            .as_ref()
+            .and_then(|schi| {
+                schi.tenc
+                    .as_ref()
+                    .map(|tenc| tenc.default_per_sample_iv_size)
+            })
+            .unwrap_or(16);
+        for traf in &self.trafs {
+            if let Some(ref senc) = traf.senc {
+                let si = senc.get_sample_info(iv_size)?;
+                sample_infos.extend(si);
+            } else {
+                // TODO - read protection info based on the saiz and saio boxes
+            }
+        }
+        Ok(sample_infos)
     }
 
     fn stsc_index(&self, sample_id: u32) -> Result<usize> {
@@ -389,21 +531,19 @@ impl Mp4Track {
     fn sample_size(&self, sample_id: u32) -> Result<u32> {
         if !self.trafs.is_empty() {
             if let Some((traf_idx, sample_idx)) = self.find_traf_idx_and_sample_idx(sample_id) {
-                if let Some(size) = self.trafs[traf_idx]
+                let mut default_sample_size = self.default_sample_size;
+                let traf = &self.trafs[traf_idx];
+                if let Some(size) = traf.tfhd.default_sample_size {
+                    default_sample_size = size;
+                }
+                if let Some(size) = traf
                     .trun
                     .as_ref()
-                    .unwrap()
-                    .sample_sizes
-                    .get(sample_idx)
+                    .and_then(|trun| trun.sample_sizes.get(sample_idx))
                 {
-                    Ok(*size)
-                } else {
-                    Err(Error::EntryInTrunNotFound(
-                        self.track_id(),
-                        BoxType::TrunBox,
-                        sample_id,
-                    ))
+                    default_sample_size = *size;
                 }
+                Ok(default_sample_size)
             } else {
                 Err(Error::BoxInTrafNotFound(self.track_id(), BoxType::TrafBox))
             }
@@ -507,6 +647,8 @@ impl Mp4Track {
                 let traf = &self.trafs[traf_idx];
                 if let Some(tfdt) = &traf.tfdt {
                     base_start_time = tfdt.base_media_decode_time;
+                } else if let Some(decode_time) = find_smooth_decode_time(&traf.uuids) {
+                    base_start_time = decode_time;
                 }
                 if let Some(duration) = traf.tfhd.default_sample_duration {
                     default_sample_duration = duration;
@@ -520,12 +662,15 @@ impl Mp4Track {
                             )?;
                         }
                         let duration = trun.sample_durations[sample_idx];
-                        return Ok((base_start_time + start_offset, duration));
+                        return Ok((base_start_time.wrapping_add(start_offset), duration));
                     }
                 }
             }
             let start_offset = ((sample_id - 1) * default_sample_duration) as u64;
-            Ok((base_start_time + start_offset, default_sample_duration))
+            Ok((
+                base_start_time.wrapping_add(start_offset),
+                default_sample_duration,
+            ))
         } else {
             let stts = &self.trak.mdia.minf.stbl.stts;
 
@@ -685,6 +830,10 @@ impl Mp4TrackWriter {
             MediaConfig::TtxtConfig(ref _ttxt_config) => {
                 let tx3g = Tx3gBox::default();
                 trak.mdia.minf.stbl.stsd.tx3g = Some(tx3g);
+            }
+            MediaConfig::WvttConfig(ref _wvtt_config) => {
+                let wvtt = WvttBox::default();
+                trak.mdia.minf.stbl.stsd.wvtt = Some(wvtt);
             }
         }
         Ok(Mp4TrackWriter {
@@ -915,4 +1064,24 @@ impl Mp4TrackWriter {
 
         Ok(self.trak.clone())
     }
+}
+
+const SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER: [u8; 16] = [
+    0x6d, 0x1d, 0x9b, 0x05, 0x42, 0xd5, 0x44, 0xe6, 0x80, 0xe2, 0x14, 0x1d, 0xaf, 0xf7, 0x57, 0xb2,
+];
+
+fn find_smooth_decode_time(uuids: &[UuidBox]) -> Option<u64> {
+    for uuid in uuids {
+        if uuid.extended_type == SMOOTH_TRACK_FRAGMENT_EXTEDED_HEADER {
+            let mut reader = &uuid.data[..];
+            let (version, _flags) = read_box_header_ext(&mut reader).ok()?;
+            let decode_time = if version == 1 {
+                reader.read_u64::<BigEndian>().ok()?
+            } else {
+                reader.read_u32::<BigEndian>().ok()? as u64
+            };
+            return Some(decode_time);
+        }
+    }
+    None
 }

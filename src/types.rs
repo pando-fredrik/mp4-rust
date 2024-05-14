@@ -138,6 +138,13 @@ impl From<BoxType> for FourCC {
     }
 }
 
+impl From<FourCC> for BoxType {
+    fn from(fourcc: FourCC) -> BoxType {
+        let int_val: u32 = fourcc.into();
+        BoxType::from(int_val)
+    }
+}
+
 impl fmt::Debug for FourCC {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let code: u32 = self.into();
@@ -155,6 +162,7 @@ impl fmt::Display for FourCC {
 const DISPLAY_TYPE_VIDEO: &str = "Video";
 const DISPLAY_TYPE_AUDIO: &str = "Audio";
 const DISPLAY_TYPE_SUBTITLE: &str = "Subtitle";
+const DISPLAY_TYPE_TEXT: &str = "Text";
 
 const HANDLER_TYPE_VIDEO: &str = "vide";
 const HANDLER_TYPE_VIDEO_FOURCC: [u8; 4] = [b'v', b'i', b'd', b'e'];
@@ -165,11 +173,15 @@ const HANDLER_TYPE_AUDIO_FOURCC: [u8; 4] = [b's', b'o', b'u', b'n'];
 const HANDLER_TYPE_SUBTITLE: &str = "sbtl";
 const HANDLER_TYPE_SUBTITLE_FOURCC: [u8; 4] = [b's', b'b', b't', b'l'];
 
+const HANDLER_TYPE_TEXT: &str = "text";
+const HANDLER_TYPE_TEXT_FOURCC: [u8; 4] = [b't', b'e', b'x', b't'];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrackType {
     Video,
     Audio,
     Subtitle,
+    Text,
 }
 
 impl fmt::Display for TrackType {
@@ -178,6 +190,7 @@ impl fmt::Display for TrackType {
             TrackType::Video => DISPLAY_TYPE_VIDEO,
             TrackType::Audio => DISPLAY_TYPE_AUDIO,
             TrackType::Subtitle => DISPLAY_TYPE_SUBTITLE,
+            TrackType::Text => DISPLAY_TYPE_TEXT,
         };
         write!(f, "{s}")
     }
@@ -190,6 +203,7 @@ impl TryFrom<&str> for TrackType {
             HANDLER_TYPE_VIDEO => Ok(TrackType::Video),
             HANDLER_TYPE_AUDIO => Ok(TrackType::Audio),
             HANDLER_TYPE_SUBTITLE => Ok(TrackType::Subtitle),
+            HANDLER_TYPE_TEXT => Ok(TrackType::Text),
             _ => Err(Error::InvalidData("unsupported handler type")),
         }
     }
@@ -202,6 +216,7 @@ impl TryFrom<&FourCC> for TrackType {
             HANDLER_TYPE_VIDEO_FOURCC => Ok(TrackType::Video),
             HANDLER_TYPE_AUDIO_FOURCC => Ok(TrackType::Audio),
             HANDLER_TYPE_SUBTITLE_FOURCC => Ok(TrackType::Subtitle),
+            HANDLER_TYPE_TEXT_FOURCC => Ok(TrackType::Text),
             _ => Err(Error::InvalidData("unsupported handler type")),
         }
     }
@@ -213,6 +228,7 @@ impl From<TrackType> for FourCC {
             TrackType::Video => HANDLER_TYPE_VIDEO_FOURCC.into(),
             TrackType::Audio => HANDLER_TYPE_AUDIO_FOURCC.into(),
             TrackType::Subtitle => HANDLER_TYPE_SUBTITLE_FOURCC.into(),
+            TrackType::Text => HANDLER_TYPE_TEXT_FOURCC.into(),
         }
     }
 }
@@ -222,6 +238,7 @@ const MEDIA_TYPE_H265: &str = "h265";
 const MEDIA_TYPE_VP9: &str = "vp9";
 const MEDIA_TYPE_AAC: &str = "aac";
 const MEDIA_TYPE_TTXT: &str = "ttxt";
+const MEDIA_TYPE_WVTT: &str = "wvtt";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MediaType {
@@ -230,6 +247,7 @@ pub enum MediaType {
     VP9,
     AAC,
     TTXT,
+    WVTT,
 }
 
 impl fmt::Display for MediaType {
@@ -248,6 +266,7 @@ impl TryFrom<&str> for MediaType {
             MEDIA_TYPE_VP9 => Ok(MediaType::VP9),
             MEDIA_TYPE_AAC => Ok(MediaType::AAC),
             MEDIA_TYPE_TTXT => Ok(MediaType::TTXT),
+            MEDIA_TYPE_WVTT => Ok(MediaType::WVTT),
             _ => Err(Error::InvalidData("unsupported media type")),
         }
     }
@@ -261,6 +280,7 @@ impl From<MediaType> for &str {
             MediaType::VP9 => MEDIA_TYPE_VP9,
             MediaType::AAC => MEDIA_TYPE_AAC,
             MediaType::TTXT => MEDIA_TYPE_TTXT,
+            MediaType::WVTT => MEDIA_TYPE_WVTT,
         }
     }
 }
@@ -273,6 +293,7 @@ impl From<&MediaType> for &str {
             MediaType::VP9 => MEDIA_TYPE_VP9,
             MediaType::AAC => MEDIA_TYPE_AAC,
             MediaType::TTXT => MEDIA_TYPE_TTXT,
+            MediaType::WVTT => MEDIA_TYPE_WVTT,
         }
     }
 }
@@ -606,6 +627,9 @@ impl Default for AacConfig {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct TtxtConfig {}
 
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct WvttConfig {}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MediaConfig {
     AvcConfig(AvcConfig),
@@ -613,6 +637,7 @@ pub enum MediaConfig {
     Vp9Config(Vp9Config),
     AacConfig(AacConfig),
     TtxtConfig(TtxtConfig),
+    WvttConfig(WvttConfig),
 }
 
 #[derive(Debug)]
@@ -738,4 +763,22 @@ impl<'a, T: Metadata<'a>> Metadata<'a> for Option<T> {
     fn summary(&self) -> Option<Cow<str>> {
         self.as_ref().and_then(|t| t.summary())
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct AuxiliaryInfoType {
+    pub aux_info_type: u32,
+    pub aux_info_type_parameter: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct SubSampleInfo {
+    pub bytes_of_clear_data: u16,
+    pub bytes_of_encrypted_data: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct SampleInfo {
+    pub iv: Vec<u8>,
+    pub subsamples: Vec<SubSampleInfo>,
 }

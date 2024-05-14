@@ -12,6 +12,7 @@ pub struct Mp4Reader<R> {
     pub moov: MoovBox,
     pub moofs: Vec<MoofBox>,
     pub emsgs: Vec<EmsgBox>,
+    pub uuids: Vec<UuidBox>,
 
     tracks: HashMap<u32, Mp4Track>,
     size: u64,
@@ -26,6 +27,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
         let mut moofs = Vec::new();
         let mut moof_offsets = Vec::new();
         let mut emsgs = Vec::new();
+        let mut uuids = Vec::new();
 
         let mut current = start;
         while current < size {
@@ -66,6 +68,10 @@ impl<R: Read + Seek> Mp4Reader<R> {
                 BoxType::EmsgBox => {
                     let emsg = EmsgBox::read_box(&mut reader, s)?;
                     emsgs.push(emsg);
+                }
+                BoxType::UuidBox => {
+                    let uuid = UuidBox::read_box(&mut reader, s)?;
+                    uuids.push(uuid);
                 }
                 _ => {
                     // XXX warn!()
@@ -117,6 +123,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
                     if let Some(track) = tracks.get_mut(&track_id) {
                         track.default_sample_duration = default_sample_duration;
+                        track.default_sample_size = default_sample_size;
                         track.moof_offsets.push(moof_offset);
                         track.trafs.push(traf.clone())
                     } else {
@@ -132,6 +139,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
             moov: moov.unwrap(),
             moofs,
             emsgs,
+            uuids,
             size,
             tracks,
         })
@@ -146,6 +154,8 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
         let mut moofs = Vec::new();
         let mut moof_offsets = Vec::new();
+        let mut emsgs = Vec::new();
+        let mut uuids = Vec::new();
 
         let mut current = start;
         while current < size {
@@ -173,6 +183,14 @@ impl<R: Read + Seek> Mp4Reader<R> {
                     let moof = MoofBox::read_box(&mut reader, s)?;
                     moofs.push(moof);
                     moof_offsets.push(moof_offset);
+                }
+                BoxType::EmsgBox => {
+                    let emsg = EmsgBox::read_box(&mut reader, s)?;
+                    emsgs.push(emsg);
+                }
+                BoxType::UuidBox => {
+                    let uuid = UuidBox::read_box(&mut reader, s)?;
+                    uuids.push(uuid);
                 }
                 _ => {
                     // XXX warn!()
@@ -217,7 +235,8 @@ impl<R: Read + Seek> Mp4Reader<R> {
             ftyp: self.ftyp.clone(),
             moov: self.moov.clone(),
             moofs,
-            emsgs: Vec::new(),
+            emsgs,
+            uuids,
             tracks,
             size,
         })

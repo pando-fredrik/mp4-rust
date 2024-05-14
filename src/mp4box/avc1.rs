@@ -17,6 +17,7 @@ pub struct Avc1Box {
     pub vertresolution: FixedPointU16,
     pub frame_count: u16,
     pub depth: u16,
+    pub inband_parameter_sets: bool,
     pub avcc: AvcCBox,
 }
 
@@ -30,6 +31,7 @@ impl Default for Avc1Box {
             vertresolution: FixedPointU16::new(0x48),
             frame_count: 1,
             depth: 0x0018,
+            inband_parameter_sets: false,
             avcc: AvcCBox::default(),
         }
     }
@@ -45,12 +47,17 @@ impl Avc1Box {
             vertresolution: FixedPointU16::new(0x48),
             frame_count: 1,
             depth: 0x0018,
+            inband_parameter_sets: false,
             avcc: AvcCBox::new(&config.seq_param_set, &config.pic_param_set),
         }
     }
 
     pub fn get_type(&self) -> BoxType {
-        BoxType::Avc1Box
+        if self.inband_parameter_sets {
+            BoxType::Avc3Box
+        } else {
+            BoxType::Avc1Box
+        }
     }
 
     pub fn get_size(&self) -> u64 {
@@ -127,6 +134,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for Avc1Box {
                     vertresolution,
                     frame_count,
                     depth,
+                    inband_parameter_sets: false,
                     avcc,
                 });
             } else {
@@ -322,6 +330,7 @@ mod tests {
             vertresolution: FixedPointU16::new(0x48),
             frame_count: 1,
             depth: 24,
+            inband_parameter_sets: false,
             avcc: AvcCBox {
                 configuration_version: 1,
                 avc_profile_indication: 100,
